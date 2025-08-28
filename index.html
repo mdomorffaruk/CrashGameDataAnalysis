@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crash Game Analysis</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Crash Game Analysis</h1>
+        <div class="tabs">
+            <button class="tab-button active" data-tab="raw-data">Raw Data</button>
+            <button class="tab-button" data-tab="analysis">Analysis & Graphs</button>
+        </div>
+
+        <div id="raw-data" class="tab-content active">
+            <h2>Raw Crash Data</h2>
+            <div id="summary-stats"></div>
+            <div id="raw-data-table"></div>
+        </div>
+
+        <div id="analysis" class="tab-content">
+            <h2>Data Analysis</h2>
+            <div class="charts">
+                <div class="chart-container full-width">
+                    <h3>Crashes Over Time</h3>
+                    <canvas id="line-chart"></canvas>
+                </div>
+                <div class="chart-container full-width">
+                    <h3>Streak Analysis (Above/Below 2.1x)</h3>
+                    <canvas id="streak-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Multiplier Below vs. Above 2.1x</h3>
+                    <canvas id="pie-chart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Multiplier Distribution</h3>
+                    <canvas id="bar-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

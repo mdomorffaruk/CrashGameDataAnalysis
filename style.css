@@ -1,0 +1,116 @@
+body {
+    font-family: sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #444;
+}
+
+.tabs {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    border: 1px solid #ccc;
+    background: #f9f9f9;
+    cursor: pointer;
+    border-radius: 5px;
+    margin: 0 5px;
+}
+
+.tab-button.active {
+    background: #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+#summary-stats {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    text-align: center;
+    flex-grow: 1;
+    margin: 5px;
+}
+
+.stat-card h3 {
+    margin: 0 0 5px 0;
+    font-size: 1em;
+    color: #666;
+}
+
+.stat-card p {
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+#raw-data-table {
+    height: 500px;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+thead {
+    background-color: #f2f2f2;
+}
+
+.charts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.chart-container {
+    flex: 1 1 45%;
+    min-width: 300px;
+}
+
+.full-width {
+    flex-basis: 100%;
+}
