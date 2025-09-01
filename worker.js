@@ -1,40 +1,78 @@
+const HIGH_MULTIPLIER_THRESHOLD = 10;
+const MOVING_AVERAGE_WINDOW = 10;
+const PROBABILITY_THRESHOLDS = [2, 5, 10, 20, 50, 100];
+
 const analyzeData = (data, threshold) => {
-    const MOVING_AVERAGE_WINDOW = 10;
-    let processedData = JSON.parse(JSON.stringify(data));
+    const startTime = performance.now();
+    let processedData = data.map(item => ({...item})).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const total_rounds = processedData.length;
 
+    // Single pass for multiple calculations
     let streakCounter = 0;
-    for (let i = 0; i < processedData.length; i++) {
-        const isBelow = processedData[i].multiplier < threshold;
-        processedData[i].is_below_threshold = isBelow;
+    let rounds_since_high = 0;
+    let rounds_since_data = [];
+    let belowThresholdCount = 0;
+    let highest_multiplier = 0;
+    let sum_multiplier = 0;
+    const bin_size = 0.5;
+    const hist = [];
+    const prob_counts = new Array(PROBABILITY_THRESHOLDS.length).fill(0);
 
+    for (let i = 0; i < total_rounds; i++) {
+        const item = processedData[i];
+        const multiplier = item.multiplier;
+
+        // Streak analysis
+        const isBelow = multiplier < threshold;
+        item.is_below_threshold = isBelow;
         if (isBelow) {
             streakCounter++;
+            belowThresholdCount++;
         } else {
             streakCounter = 0;
         }
-        processedData[i].streak_below_threshold = streakCounter;
+        item.streak_below_threshold = streakCounter;
 
+        // Moving average
         if (i >= MOVING_AVERAGE_WINDOW - 1) {
-            const window = processedData.slice(i - MOVING_AVERAGE_WINDOW + 1, i + 1);
-            processedData[i].moving_average = window.reduce((acc, val) => acc + val.multiplier, 0) / MOVING_AVERAGE_WINDOW;
+            let window_sum = 0;
+            for (let j = 0; j < MOVING_AVERAGE_WINDOW; j++) {
+                window_sum += processedData[i - j].multiplier;
+            }
+            item.moving_average = window_sum / MOVING_AVERAGE_WINDOW;
         } else {
-            processedData[i].moving_average = null;
+            item.moving_average = null;
+        }
+
+        // Rounds since high multiplier
+        if (multiplier > HIGH_MULTIPLIER_THRESHOLD) {
+            rounds_since_high = 0;
+        } else {
+            rounds_since_high++;
+        }
+        rounds_since_data.push(rounds_since_high);
+
+        // Summary stats helpers
+        sum_multiplier += multiplier;
+        if (multiplier > highest_multiplier) {
+            highest_multiplier = multiplier;
+        }
+
+        // Histogram helper
+        const bin_index = Math.floor(multiplier / bin_size);
+        hist[bin_index] = (hist[bin_index] || 0) + 1;
+
+        // Probabilities helper
+        for (let p = 0; p < PROBABILITY_THRESHOLDS.length; p++) {
+            if (multiplier > PROBABILITY_THRESHOLDS[p]) {
+                prob_counts[p]++;
+            }
         }
     }
 
-    const belowThreshold = processedData.filter(item => item.is_below_threshold).length;
-    const aboveThreshold = processedData.length - belowThreshold;
-
-    const multiplierDistribution = {};
-    for (const item of processedData) {
-        const bucket = Math.floor(item.multiplier);
-        multiplierDistribution[bucket] = (multiplierDistribution[bucket] || 0) + 1;
-    }
-    const dist_labels = Object.keys(multiplierDistribution).map(Number).sort((a, b) => a - b);
-    const dist_data = dist_labels.map(key => multiplierDistribution[key]);
-
+    // Streaks
     const streaks = [];
-    if (processedData.length > 0) {
+    if (total_rounds > 0) {
         let current_streak_type = processedData[0].is_below_threshold ? "below" : "above";
         let current_streak_length = 0;
         for (const item of processedData) {
@@ -50,28 +88,53 @@ const analyzeData = (data, threshold) => {
         streaks.push({ type: current_streak_type, length: current_streak_length });
     }
 
-    const streaks_below_eq_4 = streaks.filter(s => s.type === "below" && s.length === 4).length;
-
     const summary_stats = {
-        total_rounds: processedData.length,
-        highest_multiplier: processedData.length > 0 ? Math.max(...processedData.map(item => item.multiplier)) : 0,
-        average_multiplier: processedData.length > 0 ? processedData.reduce((acc, val) => acc + val.multiplier, 0) / processedData.length : 0,
+        total_rounds: total_rounds,
+        highest_multiplier: highest_multiplier,
+        average_multiplier: total_rounds > 0 ? sum_multiplier / total_rounds : 0,
         max_streak_below: Math.max(0, ...streaks.filter(s => s.type === "below").map(s => s.length)),
         max_streak_above: Math.max(0, ...streaks.filter(s => s.type === "above").map(s => s.length)),
-        streaks_below_eq_4: streaks_below_eq_4
     };
+
+    // Predictive Analysis
+    // Histogram
+    const max_bin = Math.ceil(highest_multiplier / bin_size);
+    const hist_labels = [];
+    const hist_data = [];
+    for (let i = 0; i < max_bin; i++) {
+        hist_labels.push(`${(i * bin_size).toFixed(1)}-${((i + 1) * bin_size).toFixed(1)}`);
+        hist_data.push(hist[i] || 0);
+    }
+    const histogram_data = { labels: hist_labels, data: hist_data };
+
+    // Streak Frequencies
+    const streak_frequencies = { below: {}, above: {} };
+    for (const s of streaks) {
+        streak_frequencies[s.type][s.length] = (streak_frequencies[s.type][s.length] || 0) + 1;
+    }
+
+    // Probabilities
+    const probabilities = [];
+    if (total_rounds > 0) {
+        for (let p = 0; p < PROBABILITY_THRESHOLDS.length; p++) {
+            probabilities.push({ threshold: PROBABILITY_THRESHOLDS[p], probability: (prob_counts[p] / total_rounds) * 100 });
+        }
+    }
+
+    const endTime = performance.now();
+    console.log(`Analysis took ${endTime - startTime} milliseconds.`);
 
     return {
         processedData,
         analysisData: {
-            below_threshold: belowThreshold,
-            above_threshold: aboveThreshold,
-            multiplier_distribution: {
-                labels: dist_labels,
-                data: dist_data
-            },
+            below_threshold: belowThresholdCount,
+            above_threshold: total_rounds - belowThresholdCount,
             streaks: streaks,
-            summary_stats: summary_stats
+            summary_stats: summary_stats,
+            histogram: histogram_data,
+            streak_frequencies: streak_frequencies,
+            rounds_since_high_multiplier: rounds_since_data,
+            probabilities: probabilities
         }
     };
 };

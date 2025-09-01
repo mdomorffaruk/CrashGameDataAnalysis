@@ -1,6 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const tabs = document.querySelectorAll(".tab-button");
-    const tabContents = document.querySelectorAll(".tab-content");
     const multiplierInput = document.getElementById("multiplier-input");
     const updateButton = document.getElementById("update-button");
     const loadingIndicator = document.getElementById("loading-indicator");
@@ -14,19 +12,53 @@ document.addEventListener("DOMContentLoaded", () => {
         const statsContainer = document.getElementById("summary-stats");
         const stats = analysisData.summary_stats;
         statsContainer.innerHTML = `
-            <div class="stat-card"><h3>Total Rounds</h3><p>${stats.total_rounds}</p></div>
-            <div class="stat-card"><h3>Highest Multiplier</h3><p>${stats.highest_multiplier.toFixed(2)}x</p></div>
-            <div class="stat-card"><h3>Average Multiplier</h3><p>${stats.average_multiplier.toFixed(2)}x</p></div>
-            <div class="stat-card"><h3>Max Streak Below ${threshold}x</h3><p>${stats.max_streak_below}</p></div>
-            <div class="stat-card"><h3>Max Streak Above ${threshold}x</h3><p>${stats.max_streak_above}</p></div>
-            <div class="stat-card"><h3>Streaks Below ${threshold}x (== 4)</h3><p>${stats.streaks_below_eq_4}</p></div>
+            <div class="col-md-4 col-lg-2">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Rounds</h5>
+                        <p class="card-text fs-4 fw-bold">${stats.total_rounds}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Highest Multiplier</h5>
+                        <p class="card-text fs-4 fw-bold">${stats.highest_multiplier.toFixed(2)}x</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Average Multiplier</h5>
+                        <p class="card-text fs-4 fw-bold">${stats.average_multiplier.toFixed(2)}x</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Max Streak &lt; ${threshold}x</h5>
+                        <p class="card-text fs-4 fw-bold">${stats.max_streak_below}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Max Streak &gt;= ${threshold}x</h5>
+                        <p class="card-text fs-4 fw-bold">${stats.max_streak_above}</p>
+                    </div>
+                </div>
+            </div>
         `;
 
         // Render raw data table
         const tableContainer = document.getElementById("raw-data-table");
-        let table = `<table><thead><tr><th>Round ID</th><th>Multiplier</th><th>Timestamp</th><th>Below ${threshold}?</th><th>Streak (< ${threshold})</th></tr></thead><tbody>`;
+        let table = `<table class="table table-striped table-hover"><thead><tr><th>Round ID</th><th>Multiplier</th><th>Timestamp</th><th>&lt; ${threshold}?</th><th>Streak</th></tr></thead><tbody>`;
         for (const row of processedData) {
-            table += `<tr><td>${row.round_id}</td><td>${row.multiplier}</td><td>${row.timestamp}</td><td>${row.is_below_threshold}</td><td>${row.streak_below_threshold}</td></tr>`;
+            table += `<tr><td>${row.round_id}</td><td>${row.multiplier.toFixed(2)}</td><td>${row.timestamp}</td><td>${row.is_below_threshold ? 'Yes' : 'No'}</td><td>${row.streak_below_threshold}</td></tr>`;
         }
         table += "</tbody></table>";
         tableContainer.innerHTML = table;
@@ -38,84 +70,52 @@ document.addEventListener("DOMContentLoaded", () => {
         // Destroy old charts
         Object.values(charts).forEach(chart => chart.destroy());
 
-        // Render charts
+        // Render main charts
         charts.line = new Chart(document.getElementById("line-chart"), {
             type: 'line',
-            data: {
-                labels: processedData.map(d => d.timestamp),
-                datasets: [
-                    {
-                        label: 'Crash Multiplier',
-                        data: processedData.map(d => d.multiplier),
-                        borderColor: '#4BC0C0',
-                        fill: false,
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Moving Average (10 rounds)',
-                        data: processedData.map(d => d.moving_average),
-                        borderColor: '#FF9F40',
-                        fill: false,
-                        tension: 0.1
-                    }
-                ]
-            },
-            options: {
-                scales: {
-                    x: { title: { display: true, text: 'Timestamp' } },
-                    y: { title: { display: true, text: 'Multiplier' } }
-                },
-                plugins: { zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }
-            }
+            data: { labels: processedData.map(d => d.timestamp), datasets: [{ label: 'Crash Multiplier', data: processedData.map(d => d.multiplier), borderColor: '#0d6efd', fill: false, tension: 0.1 }, { label: 'Moving Average (10 rounds)', data: processedData.map(d => d.moving_average), borderColor: '#fd7e14', fill: false, tension: 0.1 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Timestamp' } }, y: { title: { display: true, text: 'Multiplier' } } }, plugins: { zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } }
         });
-
         charts.streak = new Chart(document.getElementById("streak-chart"), {
             type: 'bar',
-            data: {
-                labels: analysisData.streaks.map((_, i) => i + 1),
-                datasets: [{
-                    label: 'Streak Length',
-                    data: analysisData.streaks.map(s => s.length),
-                    backgroundColor: analysisData.streaks.map(s => s.type === 'above' ? '#36A2EB' : '#FF6384'),
-                }]
-            },
-            options: {
-                scales: {
-                    x: { title: { display: true, text: 'Streak Sequence' } },
-                    y: { title: { display: true, text: 'Streak Length' } }
-                },
-                plugins: { zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } }
-            }
+            data: { labels: analysisData.streaks.map((_, i) => i + 1), datasets: [{ label: 'Streak Length', data: analysisData.streaks.map(s => s.length), backgroundColor: analysisData.streaks.map(s => s.type === 'above' ? '#0d6efd' : '#dc3545') }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Streak Sequence' } }, y: { title: { display: true, text: 'Streak Length' } } } }
         });
-
         charts.pie = new Chart(document.getElementById("pie-chart"), {
             type: 'pie',
-            data: {
-                labels: [`Below ${threshold}x`, `Above ${threshold}x`],
-                datasets: [{
-                    data: [analysisData.below_threshold, analysisData.above_threshold],
-                    backgroundColor: ['#FF6384', '#36A2EB'],
-                }]
-            }
+            data: { labels: [`Below ${threshold}x`, `Above ${threshold}x`], datasets: [{ data: [analysisData.below_threshold, analysisData.above_threshold], backgroundColor: ['#dc3545', '#0d6efd'] }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
 
-        charts.bar = new Chart(document.getElementById("bar-chart"), {
+        // Render predictive charts
+        charts.histogram = new Chart(document.getElementById("histogram-chart"), {
             type: 'bar',
-            data: {
-                labels: analysisData.multiplier_distribution.labels,
-                datasets: [{
-                    label: 'Number of Crashes',
-                    data: analysisData.multiplier_distribution.data,
-                    backgroundColor: '#FFCE56',
-                }]
-            },
-            options: {
-                scales: {
-                    x: { title: { display: true, text: 'Multiplier' } },
-                    y: { title: { display: true, text: 'Count' } }
-                }
-            }
+            data: { labels: analysisData.histogram.labels, datasets: [{ label: 'Frequency', data: analysisData.histogram.data, backgroundColor: '#ffc107' }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Multiplier Bins' } }, y: { title: { display: true, text: 'Frequency' } } } }
         });
+        charts.roundsSince = new Chart(document.getElementById("rounds-since-chart"), {
+            type: 'line',
+            data: { labels: processedData.map(d => d.timestamp), datasets: [{ label: 'Rounds Since >10x', data: analysisData.rounds_since_high_multiplier, borderColor: '#6f42c1', fill: false, tension: 0.1 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Timestamp' } }, y: { title: { display: true, text: 'Rounds' } } } }
+        });
+
+        // Render predictive tables
+        const streakFreqTable = document.getElementById("streak-frequency-table");
+        let sfTable = "<table class=\"table table-striped table-hover\"><thead><tr><th>Streak Length</th><th>Below Threshold</th><th>Above Threshold</th></tr></thead><tbody>";
+        const allStreakLengths = new Set([...Object.keys(analysisData.streak_frequencies.below), ...Object.keys(analysisData.streak_frequencies.above)]);
+        for (const length of Array.from(allStreakLengths).sort((a, b) => a - b)) {
+            sfTable += `<tr><td>${length}</td><td>${analysisData.streak_frequencies.below[length] || 0}</td><td>${analysisData.streak_frequencies.above[length] || 0}</td></tr>`;
+        }
+        sfTable += "</tbody></table>";
+        streakFreqTable.innerHTML = sfTable;
+
+        const probTable = document.getElementById("probability-table");
+        let pTable = "<table class=\"table table-striped table-hover\"><thead><tr><th>Condition</th><th>Probability</th></tr></thead><tbody>";
+        for (const p of analysisData.probabilities) {
+            pTable += `<tr><td>> ${p.threshold}x</td><td>${p.probability.toFixed(2)}%</td></tr>`;
+        }
+        pTable += "</tbody></table>";
+        probTable.innerHTML = pTable;
     };
 
     const update = () => {
@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        if (threshold === 2.1) {
+        if (threshold === 2.1 && window.defaultAnalysis) {
             render(defaultAnalysis.processedData, defaultAnalysis.analysisData, threshold);
             return;
         }
@@ -140,21 +140,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(data => {
                     rawData = data;
                     worker.postMessage({ rawData, threshold });
+                })
+                .catch(err => {
+                    console.error("Error fetching raw data:", err);
+                    loadingIndicator.classList.add("hidden");
                 });
         }
     };
 
     const init = () => {
-        tabs.forEach(tab => {
-            tab.addEventListener("click", () => {
-                tabs.forEach(t => t.classList.remove("active"));
-                tab.classList.add("active");
-
-                tabContents.forEach(c => c.classList.remove("active"));
-                document.getElementById(tab.dataset.tab).classList.add("active");
-            });
-        });
-
         updateButton.addEventListener("click", update);
 
         worker.onmessage = (e) => {
@@ -164,7 +158,12 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Initial load with default data
-        render(defaultAnalysis.processedData, defaultAnalysis.analysisData, 2.1);
+        if (window.defaultAnalysis) {
+            render(defaultAnalysis.processedData, defaultAnalysis.analysisData, 2.1);
+        } else {
+            console.error("Default analysis data not found. Trying to load from raw data...");
+            update();
+        }
     };
 
     init();
