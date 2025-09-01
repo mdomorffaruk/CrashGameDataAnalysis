@@ -1,13 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
     const multiplierInput = document.getElementById("multiplier-input");
+    const highMultiplierInput = document.getElementById("high-multiplier-input");
     const updateButton = document.getElementById("update-button");
+    const highMultiplierUpdateButton = document.getElementById("high-multiplier-update-button");
     const loadingIndicator = document.getElementById("loading-indicator");
 
     let charts = {};
     let rawData = null;
-    let worker = new Worker("worker.js");
+    let worker = new Worker(`worker.js?v=${new Date().getTime()}`);
 
-    const render = (processedData, analysisData, threshold) => {
+    const render = (processedData, analysisData, threshold, highMultiplierThreshold) => {
         // Render summary stats
         const statsContainer = document.getElementById("summary-stats");
         const stats = analysisData.summary_stats;
@@ -66,20 +68,37 @@ document.addEventListener("DOMContentLoaded", () => {
         // Update chart titles
         document.getElementById("streak-chart-title").innerHTML = `Streak Analysis (Above/Below ${threshold}x)`;
         document.getElementById("pie-chart-title").innerHTML = `Multiplier Below vs. Above ${threshold}x`;
+        document.getElementById("rounds-since-chart-title").innerHTML = `Rounds Since Last High Multiplier (> ${highMultiplierThreshold}x)`;
 
         // Destroy old charts
         Object.values(charts).forEach(chart => chart.destroy());
+
+        // Common chart options for zoom/pan
+        const commonChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: '' } },
+                y: { title: { display: true, text: '' } }
+            },
+            plugins: {
+                zoom: {
+                    pan: { enabled: true, mode: 'x' },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+                }
+            }
+        };
 
         // Render main charts
         charts.line = new Chart(document.getElementById("line-chart"), {
             type: 'line',
             data: { labels: processedData.map(d => d.timestamp), datasets: [{ label: 'Crash Multiplier', data: processedData.map(d => d.multiplier), borderColor: '#0d6efd', fill: false, tension: 0.1 }, { label: 'Moving Average (10 rounds)', data: processedData.map(d => d.moving_average), borderColor: '#fd7e14', fill: false, tension: 0.1 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Timestamp' } }, y: { title: { display: true, text: 'Multiplier' } } }, plugins: { zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' } } } }
+            options: { ...commonChartOptions, scales: { x: { title: { display: true, text: 'Timestamp' } }, y: { title: { display: true, text: 'Multiplier' } } } }
         });
         charts.streak = new Chart(document.getElementById("streak-chart"), {
             type: 'bar',
             data: { labels: analysisData.streaks.map((_, i) => i + 1), datasets: [{ label: 'Streak Length', data: analysisData.streaks.map(s => s.length), backgroundColor: analysisData.streaks.map(s => s.type === 'above' ? '#0d6efd' : '#dc3545') }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Streak Sequence' } }, y: { title: { display: true, text: 'Streak Length' } } } }
+            options: { ...commonChartOptions, scales: { x: { title: { display: true, text: 'Streak Sequence' } }, y: { title: { display: true, text: 'Streak Length' } } } }
         });
         charts.pie = new Chart(document.getElementById("pie-chart"), {
             type: 'pie',
@@ -91,12 +110,12 @@ document.addEventListener("DOMContentLoaded", () => {
         charts.histogram = new Chart(document.getElementById("histogram-chart"), {
             type: 'bar',
             data: { labels: analysisData.histogram.labels, datasets: [{ label: 'Frequency', data: analysisData.histogram.data, backgroundColor: '#ffc107' }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Multiplier Bins' } }, y: { title: { display: true, text: 'Frequency' } } } }
+            options: { ...commonChartOptions, scales: { x: { title: { display: true, text: 'Multiplier Bins' } }, y: { title: { display: true, text: 'Frequency' } } } }
         });
         charts.roundsSince = new Chart(document.getElementById("rounds-since-chart"), {
             type: 'line',
-            data: { labels: processedData.map(d => d.timestamp), datasets: [{ label: 'Rounds Since >10x', data: analysisData.rounds_since_high_multiplier, borderColor: '#6f42c1', fill: false, tension: 0.1 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: { display: true, text: 'Timestamp' } }, y: { title: { display: true, text: 'Rounds' } } } }
+            data: { labels: processedData.map(d => d.timestamp), datasets: [{ label: `Rounds Since >${highMultiplierThreshold}x`, data: analysisData.rounds_since_high_multiplier, borderColor: '#6f42c1', fill: false, tension: 0.1 }] },
+            options: { ...commonChartOptions, scales: { x: { title: { display: true, text: 'Timestamp' } }, y: { title: { display: true, text: 'Rounds' } } } }
         });
 
         // Render predictive tables
@@ -120,26 +139,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const update = () => {
         const threshold = parseFloat(multiplierInput.value);
+        const highMultiplierThreshold = parseFloat(highMultiplierInput.value);
+
         if (isNaN(threshold)) {
-            alert("Please enter a valid number for the multiplier threshold.");
+            alert("Please enter a valid number for the main multiplier threshold.");
+            return;
+        }
+        if (isNaN(highMultiplierThreshold)) {
+            alert("Please enter a valid number for the high multiplier threshold.");
             return;
         }
 
-        if (threshold === 2.1 && window.defaultAnalysis) {
-            render(defaultAnalysis.processedData, defaultAnalysis.analysisData, threshold);
+        if (threshold === 2.1 && highMultiplierThreshold === 10 && window.defaultAnalysis) {
+            render(defaultAnalysis.processedData, defaultAnalysis.analysisData, threshold, highMultiplierThreshold);
             return;
         }
 
         loadingIndicator.classList.remove("hidden");
 
         if (rawData) {
-            worker.postMessage({ rawData, threshold });
+            worker.postMessage({ rawData, threshold, highMultiplierThreshold });
         } else {
             fetch("raw_data.json")
                 .then(response => response.json())
                 .then(data => {
                     rawData = data;
-                    worker.postMessage({ rawData, threshold });
+                    worker.postMessage({ rawData, threshold, highMultiplierThreshold });
                 })
                 .catch(err => {
                     console.error("Error fetching raw data:", err);
@@ -150,16 +175,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const init = () => {
         updateButton.addEventListener("click", update);
+        highMultiplierUpdateButton.addEventListener("click", update);
 
         worker.onmessage = (e) => {
             const { processedData, analysisData } = e.data;
-            render(processedData, analysisData, parseFloat(multiplierInput.value));
+            render(processedData, analysisData, parseFloat(multiplierInput.value), parseFloat(highMultiplierInput.value));
             loadingIndicator.classList.add("hidden");
         };
 
         // Initial load with default data
         if (window.defaultAnalysis) {
-            render(defaultAnalysis.processedData, defaultAnalysis.analysisData, 2.1);
+            render(defaultAnalysis.processedData, defaultAnalysis.analysisData, 2.1, 10);
         } else {
             console.error("Default analysis data not found. Trying to load from raw data...");
             update();

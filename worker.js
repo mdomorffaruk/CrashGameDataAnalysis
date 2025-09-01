@@ -1,9 +1,9 @@
-const HIGH_MULTIPLIER_THRESHOLD = 10;
 const MOVING_AVERAGE_WINDOW = 10;
 const PROBABILITY_THRESHOLDS = [2, 5, 10, 20, 50, 100];
 
-const analyzeData = (data, threshold) => {
+const analyzeData = (data, threshold, highMultiplierThreshold) => {
     const startTime = performance.now();
+    console.log(`Worker: Analyzing with highMultiplierThreshold: ${highMultiplierThreshold}`); // DEBUG LOG
     let processedData = data.map(item => ({...item})).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const total_rounds = processedData.length;
 
@@ -45,7 +45,7 @@ const analyzeData = (data, threshold) => {
         }
 
         // Rounds since high multiplier
-        if (multiplier > HIGH_MULTIPLIER_THRESHOLD) {
+        if (multiplier > highMultiplierThreshold) {
             rounds_since_high = 0;
         } else {
             rounds_since_high++;
@@ -140,7 +140,7 @@ const analyzeData = (data, threshold) => {
 };
 
 self.onmessage = (e) => {
-    const { rawData, threshold } = e.data;
-    const analysis = analyzeData(rawData, threshold);
+    const { rawData, threshold, highMultiplierThreshold } = e.data;
+    const analysis = analyzeData(rawData, threshold, highMultiplierThreshold);
     self.postMessage(analysis);
 };
