@@ -1,0 +1,10 @@
+old/
+har/*
+!har/.gitkeep
+.venv/
+__pycache__/
+*.pyc
+crash_from_har.csv
+crash_results_from_har.csv
+crash_results.csv
+chromedriver-linux64.zip
