@@ -20,15 +20,28 @@ This project provides a suite of tools to analyze crash game data from 1xBet, ex
 
 ## How to Use
 
-### 1. Prerequisites
+### 1. Setup
 
-- Python 3
+1.  **Clone the repository (if you haven't already):**
+    ```bash
+    git clone <repository-url>
+    cd 1xbet-crash-analyzer
+    ```
 
-### 2. Setup
+2.  **Create and activate a virtual environment:**
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
 
-1.  **Add HAR Files:** Place your `.har` files containing the crash game data into the `har` directory.
+3.  **Install the required dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-### 3. Generate Data
+4.  **Add HAR Files:** Place your `.har` files containing the crash game data into the `har` directory.
+
+### 2. Generate Data
 
 Run the data generation script from your terminal:
 
@@ -38,9 +51,15 @@ Run the data generation script from your terminal:
 
 This script will process all the HAR files, perform the necessary analyses, and generate the data files required for the web interface.
 
-### 4. View the Analysis
+### 3. View the Analysis
 
-Open the `web/index.html` file in your web browser.
+1.  **Navigate to the web directory and start a local web server:**
+    ```bash
+    cd web
+    python3 -m http.server
+    ```
+
+2.  **Open your web browser** and navigate to `http://localhost:8000/`.
 
 **Note:** If you have run the script before, you may need to do a hard refresh (Ctrl+Shift+R or Cmd+Shift+R) to ensure you are viewing the latest data.
 
